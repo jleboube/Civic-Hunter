@@ -1,0 +1,32 @@
+services:
+  civicwatch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: civicwatch-osint
+    restart: unless-stopped
+    ports:
+      - "47391:47391"
+    environment:
+      - NODE_ENV=production
+      - PORT=47391
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:47391/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - civicwatch-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  civicwatch-network:
+    driver: bridge

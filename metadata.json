@@ -1,0 +1,7 @@
+{
+  "name": "CivicWatch OSINT Intelligence Platform",
+  "description": "A high-fidelity civilian data ontology and OSINT platform featuring real-time NYPD/FDNY radio streams, NYC traffic cameras, Citizen-style incident reporting, and global news feeds.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
