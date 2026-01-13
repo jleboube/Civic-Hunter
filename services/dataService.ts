@@ -254,11 +254,24 @@ const calculatePriority = (item: any): number => {
 const formatTimeAgo = (dateString: string): string => {
   if (!dateString) return 'Unknown';
 
-  const date = new Date(dateString);
+  let date: Date;
+
+  // Handle GDELT format: "20251104T140000Z" -> "2025-11-04T14:00:00Z"
+  if (/^\d{8}T\d{6}Z$/.test(dateString)) {
+    const formatted = `${dateString.slice(0, 4)}-${dateString.slice(4, 6)}-${dateString.slice(6, 8)}T${dateString.slice(9, 11)}:${dateString.slice(11, 13)}:${dateString.slice(13, 15)}Z`;
+    date = new Date(formatted);
+  } else {
+    date = new Date(dateString);
+  }
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) return 'Recent';
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
+  if (diffMins < 0) return 'Just now'; // Future dates
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
 
