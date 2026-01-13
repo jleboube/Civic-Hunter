@@ -15,6 +15,7 @@ const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 // City coordinates
 const CITY_CENTERS: Record<string, { lat: number; lng: number; zoom: number; name: string }> = {
   chicago: { lat: 41.8781, lng: -87.6298, zoom: 11, name: 'Chicago, IL' },
+  evansville: { lat: 37.9716, lng: -87.5711, zoom: 12, name: 'Evansville, IN' },
   nyc: { lat: 40.7128, lng: -74.0060, zoom: 11, name: 'New York, NY' },
   la: { lat: 34.0522, lng: -118.2437, zoom: 10, name: 'Los Angeles, CA' },
   dc: { lat: 38.9072, lng: -77.0369, zoom: 12, name: 'Washington, DC' }
@@ -392,6 +393,7 @@ const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onInciden
           className="bg-black/80 backdrop-blur-sm text-white text-sm px-3 py-2 rounded-lg border border-cyan-500/50 focus:border-cyan-400 focus:outline-none cursor-pointer mb-2 w-full"
         >
           <option value="chicago">Chicago, IL</option>
+          <option value="evansville">Evansville, IN</option>
           <option value="nyc">New York, NY</option>
           <option value="la">Los Angeles, CA</option>
           <option value="dc">Washington, DC</option>

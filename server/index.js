@@ -791,6 +791,21 @@ app.get('/api/incidents', async (req, res) => {
       return res.json(allIncidents);
     }
 
+    // If city=evansville, return only Evansville data
+    if (city === 'evansville') {
+      const [evCrimes, evShots] = await Promise.all([
+        fetchEvansvilleCrimes(),
+        fetchEvansvilleShotsFired()
+      ]);
+
+      let allIncidents = [...evCrimes, ...evShots];
+      allIncidents.sort((a, b) => b.priority - a.priority);
+
+      console.log(`Evansville Incidents API: Returning ${allIncidents.length} incidents`);
+      console.log(`  - Crimes: ${evCrimes.length}, Shots Fired: ${evShots.length}`);
+      return res.json(allIncidents);
+    }
+
     // Default: return all cities
     const [nycIncidents, chi311, chiCrimes, chiCrashes] = await Promise.all([
       fetchNYC311Incidents(),
@@ -895,6 +910,198 @@ app.get('/api/chicago/shotspotter', async (req, res) => {
   } catch (error) {
     console.error('Error fetching Chicago ShotSpotter:', error);
     res.status(500).json({ error: 'Failed to fetch ShotSpotter data' });
+  }
+});
+
+// ============================================
+// EVANSVILLE, IN SIGNAL INTELLIGENCE SOURCES
+// ============================================
+
+// Evansville Crime Data (ArcGIS MapServer)
+async function fetchEvansvilleCrimes() {
+  try {
+    // Query the last 30 days layer for more data with outSR=4326 for WGS84 coordinates
+    const response = await fetch(
+      'https://maps.evansvillegis.com/arcgis_server/rest/services/CRIMES/CRIMES_byDate/MapServer/1/query?where=1%3D1&outFields=*&f=json&resultRecordCount=100&outSR=4326',
+      { headers: { 'Accept': 'application/json' } }
+    );
+
+    if (!response.ok) {
+      console.log('Evansville Crimes API returned status:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (!data.features || !Array.isArray(data.features)) {
+      console.log('Evansville Crimes API did not return features array');
+      return [];
+    }
+
+    return data.features.map((feature, index) => {
+      const attrs = feature.attributes;
+      const geom = feature.geometry;
+
+      // With outSR=4326, geometry is already in WGS84 (lat/lng)
+      let lat = null, lng = null;
+      if (geom && geom.x && geom.y) {
+        // ArcGIS returns x=longitude, y=latitude
+        lng = geom.x;
+        lat = geom.y;
+      }
+
+      return {
+        id: `ev-crime-${attrs.inci_id || index}`,
+        title: attrs.Map_Crime || 'Crime Reported',
+        description: attrs.chrgdesc || '',
+        address: attrs.Address || 'Evansville, IN',
+        lat: lat,
+        lng: lng,
+        time: attrs.date_occu ? new Date(attrs.date_occu).toISOString() : new Date().toISOString(),
+        source: 'Evansville PD',
+        category: attrs.Map_Crime,
+        ucrCode: attrs.ucr_code,
+        zone: attrs.zone_ || attrs.zone1,
+        subdivision: attrs.subdivisn,
+        premise: attrs.premise,
+        attemptComplete: attrs.attm_comp,
+        tract: attrs.tract,
+        dayOfWeek: attrs.dow1,
+        hourOccurred: attrs.hour_occu,
+        status: attrs.arr_chrg ? 'Arrest Charged' : 'Open',
+        priority: calculateEvansvilleCrimePriority(attrs)
+      };
+    }).filter(i => i.lat && i.lng && !isNaN(i.lat) && !isNaN(i.lng));
+  } catch (error) {
+    console.error('Error fetching Evansville crimes:', error.message);
+    return [];
+  }
+}
+
+// Calculate priority for Evansville crimes based on Map_Crime field
+function calculateEvansvilleCrimePriority(attrs) {
+  let priority = 50;
+  const crime = (attrs.Map_Crime || '').toLowerCase();
+  const desc = (attrs.chrgdesc || '').toLowerCase();
+
+  // Critical crimes
+  const critical = ['homicide', 'murder', 'rape', 'robbery', 'kidnapping', 'arson'];
+  const high = ['battery', 'burglary', 'theft', 'weapon', 'firearm', 'intimidation', 'assault'];
+  const medium = ['criminal mischief', 'fraud', 'forgery', 'trespass'];
+
+  if (critical.some(c => crime.includes(c) || desc.includes(c))) priority = 95;
+  else if (high.some(h => crime.includes(h) || desc.includes(h))) priority = 75;
+  else if (medium.some(m => crime.includes(m) || desc.includes(m))) priority = 55;
+
+  return Math.min(priority, 100);
+}
+
+// Evansville Shots Fired Data (911 Calls)
+async function fetchEvansvilleShotsFired() {
+  try {
+    // Query the last 30 days layer with outSR=4326 to get WGS84 coordinates directly
+    const response = await fetch(
+      'https://maps.evansvillegis.com/arcgis_server/rest/services/CRIMES/SHOTS/MapServer/1/query?where=1%3D1&outFields=*&f=json&resultRecordCount=50&outSR=4326',
+      { headers: { 'Accept': 'application/json' } }
+    );
+
+    if (!response.ok) {
+      console.log('Evansville Shots Fired API returned status:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (!data.features || !Array.isArray(data.features)) {
+      console.log('Evansville Shots Fired API did not return features array');
+      return [];
+    }
+
+    return data.features.map((feature, index) => {
+      const attrs = feature.attributes;
+      const geom = feature.geometry;
+
+      // With outSR=4326, geometry is already in WGS84 (lat/lng)
+      let lat = null, lng = null;
+      if (geom && geom.x && geom.y) {
+        // ArcGIS returns x=longitude, y=latitude
+        lng = geom.x;
+        lat = geom.y;
+      }
+
+      return {
+        id: `ev-shots-${index}`,
+        title: attrs.Nature || 'Shots Fired Report',
+        description: `911 call reported - ${attrs.CloseCode === 'UNF' ? 'Unfounded' : attrs.CloseCode === 'ARR' ? 'Arrest Made' : attrs.CloseCode === 'RPT' ? 'Report Filed' : 'Responded'}`,
+        address: attrs.Street || 'Evansville, IN',
+        lat: lat,
+        lng: lng,
+        time: attrs.CallTime ? new Date(attrs.CallTime).toISOString() : new Date().toISOString(),
+        source: 'Evansville 911',
+        category: 'Shots Fired',
+        agency: attrs.Agency?.trim() || 'EPD',
+        city: attrs.CityDescription || 'Evansville',
+        closeCode: attrs.CloseCode?.trim(),
+        district: attrs.District?.trim(),
+        beat: attrs.GeoLawBeat?.trim(),
+        status: attrs.CloseCode === 'ARR' ? 'Arrest' : attrs.CloseCode === 'UNF' ? 'Unfounded' : 'Responded',
+        priority: 90 // Shots fired are always high priority
+      };
+    }).filter(i => i.lat && i.lng && !isNaN(i.lat) && !isNaN(i.lng));
+  } catch (error) {
+    console.error('Error fetching Evansville shots fired:', error.message);
+    return [];
+  }
+}
+
+// Evansville comprehensive endpoint
+app.get('/api/evansville/intel', async (req, res) => {
+  try {
+    const [crimes, shotsFired] = await Promise.all([
+      fetchEvansvilleCrimes(),
+      fetchEvansvilleShotsFired()
+    ]);
+
+    const allData = {
+      crimes: crimes,
+      shotsFired: shotsFired,
+      summary: {
+        totalCrimes: crimes.length,
+        totalShotsFired: shotsFired.length,
+        highPriorityCrimes: crimes.filter(c => c.priority >= 80).length,
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    console.log(`Evansville Intel API: ${crimes.length} crimes, ${shotsFired.length} shots fired reports`);
+    res.json(allData);
+  } catch (error) {
+    console.error('Error fetching Evansville intel:', error);
+    res.status(500).json({ error: 'Failed to fetch Evansville intelligence data' });
+  }
+});
+
+// Evansville crimes endpoint
+app.get('/api/evansville/crimes', async (req, res) => {
+  try {
+    const crimes = await fetchEvansvilleCrimes();
+    console.log(`Evansville Crimes API: Returning ${crimes.length} crimes`);
+    res.json(crimes);
+  } catch (error) {
+    console.error('Error fetching Evansville crimes:', error);
+    res.status(500).json({ error: 'Failed to fetch Evansville crime data' });
+  }
+});
+
+// Evansville shots fired endpoint
+app.get('/api/evansville/shots', async (req, res) => {
+  try {
+    const shots = await fetchEvansvilleShotsFired();
+    console.log(`Evansville Shots Fired API: Returning ${shots.length} reports`);
+    res.json(shots);
+  } catch (error) {
+    console.error('Error fetching Evansville shots fired:', error);
+    res.status(500).json({ error: 'Failed to fetch Evansville shots fired data' });
   }
 });
 
