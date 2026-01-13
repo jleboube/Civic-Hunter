@@ -4,7 +4,11 @@ import { Incident, RadioStream, Camera } from '../types';
 import { fetchRadioStreams, fetchIncidents, fetchCameras } from '../services/dataService';
 import AudioPlayer from './AudioPlayer';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  selectedCity?: string;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ selectedCity = 'chicago' }) => {
   const [activeTab, setActiveTab] = useState<'intel' | 'radio' | 'visuals'>('intel');
   const [radios, setRadios] = useState<RadioStream[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -13,14 +17,14 @@ const Sidebar: React.FC = () => {
 
   useEffect(() => {
     const loadData = () => {
-      fetchRadioStreams().then(setRadios);
-      fetchIncidents().then(setIncidents);
-      fetchCameras().then(setCameras);
+      fetchRadioStreams(selectedCity).then(setRadios);
+      fetchIncidents(selectedCity).then(setIncidents);
+      fetchCameras(selectedCity).then(setCameras);
     };
     loadData();
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedCity]);
 
   const sortedIncidents = useMemo(() => 
     [...incidents].sort((a, b) => b.priority - a.priority), 

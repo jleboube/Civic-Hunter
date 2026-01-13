@@ -7,10 +7,12 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:47391/api' : '/api';
 /**
  * Fetch all aggregated CCTV camera feeds from multiple sources
  * Sources: NYC DOT, Chicago DOT, Caltrans, DC DOT, International
+ * @param city - Optional city filter
  */
-export const fetchCameras = async (): Promise<Camera[]> => {
+export const fetchCameras = async (city?: string): Promise<Camera[]> => {
   try {
-    const response = await fetch(`${API_BASE}/cameras`);
+    const url = city ? `${API_BASE}/cameras?city=${city}` : `${API_BASE}/cameras`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch cameras');
     return await response.json();
   } catch (error) {
@@ -118,41 +120,23 @@ const fetchNYC311Fallback = async (): Promise<Incident[]> => {
 
 /**
  * Fetch radio scanner streams
+ * @param city - Optional city filter
  */
-export const fetchRadioStreams = async (): Promise<RadioStream[]> => {
+export const fetchRadioStreams = async (city?: string): Promise<RadioStream[]> => {
   try {
-    const response = await fetch(`${API_BASE}/radio-streams`);
+    const url = city ? `${API_BASE}/radio-streams?city=${city}` : `${API_BASE}/radio-streams`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch radio streams');
     return await response.json();
   } catch (error) {
     console.error('Radio stream error:', error);
-    // Fallback hardcoded streams
-    return [
-      {
-        id: 'nypd-citywide',
-        name: 'NYPD Citywide',
-        description: 'New York Police Department - Citywide Operations',
-        location: 'New York, NY',
-        url: 'https://broadcastify.cdnstream1.com/14439',
-        type: 'police',
-        listeners: Math.floor(Math.random() * 500) + 100
-      },
-      {
-        id: 'fdny-citywide',
-        name: 'FDNY Citywide',
-        description: 'Fire Department of New York - Citywide',
-        location: 'New York, NY',
-        url: 'https://broadcastify.cdnstream1.com/14433',
-        type: 'fire',
-        listeners: Math.floor(Math.random() * 400) + 80
-      }
-    ];
+    return [];
   }
 };
 
 /**
  * Fetch breaking news from multiple sources
- * Sources: GDELT, Currents API, RSS Feeds
+ * Sources: GDELT Project
  */
 export const fetchNews = async (): Promise<NewsArticle[]> => {
   try {
@@ -165,18 +149,7 @@ export const fetchNews = async (): Promise<NewsArticle[]> => {
     }));
   } catch (error) {
     console.error('News feed error:', error);
-    // Fallback news
-    return [
-      {
-        id: 'fallback-1',
-        title: 'Monitoring active feeds for breaking news...',
-        source: 'OSINT Scanner',
-        time: 'Now',
-        imageUrl: null,
-        link: '#',
-        sentiment: 'neutral'
-      }
-    ];
+    return [];
   }
 };
 

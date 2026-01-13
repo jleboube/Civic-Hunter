@@ -24,9 +24,10 @@ const CITY_CENTERS: Record<string, { lat: number; lng: number; zoom: number; nam
 interface MapContainerProps {
   onIncidentSelect?: (incident: Incident) => void;
   onCameraSelect?: (camera: Camera) => void;
+  onCityChange?: (city: string) => void;
 }
 
-const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onIncidentSelect, onCameraSelect }, ref) => {
+const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onIncidentSelect, onCameraSelect, onCityChange }, ref) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<any>(null);
   const markersLayer = useRef<any>(null);
@@ -121,6 +122,8 @@ const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onInciden
       leafletMap.current.setView([cityCenter.lat, cityCenter.lng], cityCenter.zoom);
       loadData();
     }
+    // Notify parent of city change
+    onCityChange?.(city);
   };
 
   const loadData = async () => {

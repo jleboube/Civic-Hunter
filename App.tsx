@@ -6,6 +6,15 @@ import TopNav from './components/TopNav';
 import FloatingPanels from './components/FloatingPanels';
 import { NewsArticle, Incident } from './types';
 
+// City context for sharing selected city across components
+export const CityContext = React.createContext<{
+  selectedCity: string;
+  setSelectedCity: (city: string) => void;
+}>({
+  selectedCity: 'chicago',
+  setSelectedCity: () => {}
+});
+
 // Alert detail modal for non-location alerts
 interface AlertModalProps {
   item: NewsArticle | Incident | null;
@@ -147,6 +156,7 @@ const AlertModal: React.FC<AlertModalProps> = ({ item, onClose }) => {
 
 const App: React.FC = () => {
   const [selectedAlert, setSelectedAlert] = useState<NewsArticle | Incident | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string>('chicago');
   const mapRef = useRef<MapContainerRef>(null);
 
   const handleAlertClick = useCallback((item: NewsArticle | Incident) => {
@@ -162,30 +172,36 @@ const App: React.FC = () => {
     setSelectedAlert(item);
   }, []);
 
+  const handleCityChange = useCallback((city: string) => {
+    setSelectedCity(city);
+  }, []);
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0b0e14] text-slate-200 selection:bg-green-500/30">
-      {/* Main OSINT Dashboard Layout */}
-      <TopNav />
+    <CityContext.Provider value={{ selectedCity, setSelectedCity }}>
+      <div className="flex h-screen w-screen overflow-hidden bg-[#0b0e14] text-slate-200 selection:bg-green-500/30">
+        {/* Main OSINT Dashboard Layout */}
+        <TopNav />
 
-      <main className="flex-1 relative flex pt-14">
-        {/* Primary Functional Panel */}
-        <Sidebar />
+        <main className="flex-1 relative flex pt-14">
+          {/* Primary Functional Panel */}
+          <Sidebar selectedCity={selectedCity} />
 
-        {/* Map Visualization Workspace */}
-        <div className="flex-1 relative">
-          <MapContainer ref={mapRef} />
+          {/* Map Visualization Workspace */}
+          <div className="flex-1 relative">
+            <MapContainer ref={mapRef} onCityChange={handleCityChange} />
 
-          {/* Global UI Overlays */}
-          <FloatingPanels onAlertClick={handleAlertClick} />
-        </div>
-      </main>
+            {/* Global UI Overlays */}
+            <FloatingPanels onAlertClick={handleAlertClick} selectedCity={selectedCity} />
+          </div>
+        </main>
 
-      {/* Alert Detail Modal */}
-      <AlertModal item={selectedAlert} onClose={() => setSelectedAlert(null)} />
+        {/* Alert Detail Modal */}
+        <AlertModal item={selectedAlert} onClose={() => setSelectedAlert(null)} />
 
-      {/* OSINT Scanning Overlay Lines (Aesthetic) */}
-      <div className="fixed inset-0 pointer-events-none border-[12px] border-white/5 z-50 rounded-lg m-2 mix-blend-overlay" />
-    </div>
+        {/* OSINT Scanning Overlay Lines (Aesthetic) */}
+        <div className="fixed inset-0 pointer-events-none border-[12px] border-white/5 z-50 rounded-lg m-2 mix-blend-overlay" />
+      </div>
+    </CityContext.Provider>
   );
 };
 

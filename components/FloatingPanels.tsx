@@ -5,9 +5,10 @@ import { NewsArticle, Camera, Incident } from '../types';
 
 interface FloatingPanelsProps {
   onAlertClick?: (item: NewsArticle | Incident) => void;
+  selectedCity?: string;
 }
 
-const FloatingPanels: React.FC<FloatingPanelsProps> = ({ onAlertClick }) => {
+const FloatingPanels: React.FC<FloatingPanelsProps> = ({ onAlertClick, selectedCity = 'chicago' }) => {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -21,8 +22,8 @@ const FloatingPanels: React.FC<FloatingPanelsProps> = ({ onAlertClick }) => {
       try {
         const [newsData, cameraData, incidentData] = await Promise.all([
           fetchNews(),
-          fetchCameras(),
-          fetchIncidents()
+          fetchCameras(selectedCity),
+          fetchIncidents(selectedCity)
         ]);
         setNews(newsData);
         setCameras(cameraData);
@@ -39,7 +40,7 @@ const FloatingPanels: React.FC<FloatingPanelsProps> = ({ onAlertClick }) => {
     // Auto-refresh every 60 seconds
     const interval = setInterval(loadData, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedCity]);
 
   const getSentimentColor = (sentiment?: string) => {
     if (!sentiment) return 'bg-slate-500';

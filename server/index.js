@@ -254,37 +254,6 @@ async function fetchGDELTNews() {
   }
 }
 
-// Generate simulated breaking news (always works as fallback)
-function generateSimulatedNews() {
-  const breakingNews = [
-    { title: 'Major traffic incident reported on I-95 northbound', category: 'traffic', sentiment: 'negative', location: 'New York' },
-    { title: 'Emergency services responding to downtown Manhattan', category: 'emergency', sentiment: 'negative', location: 'New York' },
-    { title: 'Large gathering reported at Central Park', category: 'crowd', sentiment: 'neutral', location: 'New York' },
-    { title: 'Weather alert issued for tri-state area', category: 'weather', sentiment: 'negative', location: null },
-    { title: 'Public event drawing crowds in Times Square', category: 'event', sentiment: 'positive', location: 'New York' },
-    { title: 'Infrastructure maintenance causing transit delays', category: 'traffic', sentiment: 'neutral', location: null },
-    { title: 'Security checkpoint established at Penn Station', category: 'security', sentiment: 'neutral', location: 'New York' },
-    { title: 'Fire department responding to building alarm in Brooklyn', category: 'emergency', sentiment: 'negative', location: 'Brooklyn' },
-    { title: 'Traffic congestion reported on George Washington Bridge', category: 'traffic', sentiment: 'negative', location: 'New York' },
-    { title: 'Community event scheduled for Chicago lakefront', category: 'event', sentiment: 'positive', location: 'Chicago' },
-    { title: 'Police activity reported near Union Square', category: 'security', sentiment: 'neutral', location: 'New York' },
-    { title: 'Water main break affecting downtown LA traffic', category: 'utility', sentiment: 'negative', location: 'Los Angeles' }
-  ];
-
-  const sources = ['Reuters', 'AP News', 'BBC World', 'Local News', 'Breaking Alert'];
-
-  return breakingNews.map((news, index) => ({
-    id: `sim-${index}`,
-    title: news.title,
-    source: sources[index % sources.length],
-    url: '#',
-    time: new Date(Date.now() - Math.random() * 7200000).toISOString(),
-    imageUrl: null,
-    sentiment: news.sentiment,
-    location: news.location,
-    category: news.category
-  }));
-}
 
 // Basic sentiment analysis without external API
 function analyzeSentimentBasic(text) {
@@ -327,25 +296,15 @@ function extractLocation(text) {
 app.get('/api/news', async (req, res) => {
   try {
     const gdeltNews = await fetchGDELTNews();
-    const simulatedNews = generateSimulatedNews();
-
-    // Combine real news with simulated (simulated fills gaps if APIs fail)
-    let allNews = [...gdeltNews];
-
-    // If we didn't get enough real news, add simulated
-    if (allNews.length < 5) {
-      allNews = [...allNews, ...simulatedNews];
-    }
 
     // Sort by time (most recent first)
-    allNews.sort((a, b) => new Date(b.time) - new Date(a.time));
+    gdeltNews.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-    console.log(`News API: Returning ${allNews.length} articles (${gdeltNews.length} from GDELT)`);
-    res.json(allNews.slice(0, 20));
+    console.log(`News API: Returning ${gdeltNews.length} articles from GDELT`);
+    res.json(gdeltNews.slice(0, 20));
   } catch (error) {
     console.error('Error aggregating news:', error);
-    // Return simulated news on error
-    res.json(generateSimulatedNews());
+    res.json([]);
   }
 });
 
@@ -723,25 +682,6 @@ async function fetchChicagoBuildingViolations() {
   }
 }
 
-// Generate simulated incidents as fallback
-function generateSimulatedIncidents() {
-  const incidents = [
-    { title: 'Noise Complaint', address: '123 Main St, New York', lat: 40.7580, lng: -73.9855, category: 'Noise', priority: 40 },
-    { title: 'Traffic Signal Issue', address: '456 Broadway, New York', lat: 40.7614, lng: -73.9776, category: 'Traffic', priority: 55 },
-    { title: 'Street Light Out', address: '789 5th Ave, New York', lat: 40.7649, lng: -73.9730, category: 'Utility', priority: 35 },
-    { title: 'Illegal Parking', address: '321 Park Ave, New York', lat: 40.7527, lng: -73.9772, category: 'Traffic', priority: 45 },
-    { title: 'Water Leak', address: '555 Lexington Ave, New York', lat: 40.7589, lng: -73.9718, category: 'Utility', priority: 65 }
-  ];
-
-  return incidents.map((inc, index) => ({
-    id: `sim-inc-${index}`,
-    ...inc,
-    description: '',
-    time: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-    source: 'Simulated',
-    status: 'Open'
-  }));
-}
 
 // Calculate incident priority
 function calculatePriority(incident) {
@@ -816,11 +756,6 @@ app.get('/api/incidents', async (req, res) => {
 
     let allIncidents = [...nycIncidents, ...chiCrimes, ...chiCrashes, ...chi311];
 
-    // Add simulated if we don't have enough real data
-    if (allIncidents.length < 5) {
-      allIncidents = [...allIncidents, ...generateSimulatedIncidents()];
-    }
-
     // Sort by priority
     allIncidents.sort((a, b) => b.priority - a.priority);
 
@@ -828,7 +763,7 @@ app.get('/api/incidents', async (req, res) => {
     res.json(allIncidents);
   } catch (error) {
     console.error('Error aggregating incidents:', error);
-    res.json(generateSimulatedIncidents());
+    res.json([]);
   }
 });
 
