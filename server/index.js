@@ -208,7 +208,7 @@ async function fetchGDELTNews() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query=breaking%20OR%20incident%20OR%20emergency&mode=artlist&maxrecords=20&format=json', {
+    const response = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query=(breaking%20OR%20incident%20OR%20emergency)&mode=artlist&maxrecords=20&format=json', {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' }
     });

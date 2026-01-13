@@ -439,9 +439,9 @@ const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onInciden
         </div>
       </div>
 
-      {/* Analysis Summary Panel */}
+      {/* Analysis Summary Panel - positioned above stats bar */}
       {analysis && (
-        <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-sm rounded-lg border border-white/10 p-3 max-w-xs z-10">
+        <div className="absolute bottom-20 left-4 bg-black/80 backdrop-blur-sm rounded-lg border border-white/10 p-3 max-w-sm z-10">
           <div className="flex items-center gap-2 mb-2">
             <i className="fa-solid fa-brain text-cyan-400" />
             <span className="text-xs font-bold text-white uppercase tracking-wider">AI Analysis</span>
@@ -453,7 +453,7 @@ const MapContainer = forwardRef<MapContainerRef, MapContainerProps>(({ onInciden
               {analysis.threatLevel.toUpperCase()}
             </span>
           </div>
-          <p className="text-xs text-gray-300">{analysis.summary}</p>
+          <p className="text-xs text-gray-300 leading-relaxed max-h-32 overflow-y-auto">{analysis.summary}</p>
           <div className="flex gap-4 mt-2 text-xs text-gray-400">
             <span><i className="fa-solid fa-fire-flame-curved text-red-400 mr-1" /> {hotspots.length} hotspots</span>
             <span><i className="fa-solid fa-triangle-exclamation text-blue-400 mr-1" /> {incidents.length} incidents</span>

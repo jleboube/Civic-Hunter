@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Incident, RadioStream, Camera } from '../types';
 import { fetchRadioStreams, fetchIncidents, fetchCameras } from '../services/dataService';
 import AudioPlayer from './AudioPlayer';
+import CCTVPlayer from './CCTVPlayer';
 
 interface SidebarProps {
   selectedCity?: string;
@@ -14,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedCity = 'chicago' }) => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [currentStream, setCurrentStream] = useState<RadioStream | null>(null);
+  const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
 
   useEffect(() => {
     const loadData = () => {
@@ -101,15 +103,24 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedCity = 'chicago' }) => {
         {activeTab === 'visuals' && (
           <div className="grid grid-cols-2 gap-2">
             {trendingVisuals.map(cam => (
-              <div key={cam.id} className="relative aspect-video bg-slate-900 border border-white/10 rounded overflow-hidden group">
-                <img 
-                  src={`https://webcams.nyctmc.org/multiviewer/data/${cam.id}.jpg?t=${Date.now()}`} 
+              <div
+                key={cam.id}
+                onClick={() => setSelectedCamera(cam)}
+                className="relative aspect-video bg-slate-900 border border-white/10 rounded overflow-hidden group cursor-pointer hover:border-cyan-500/50 transition-all"
+              >
+                <img
+                  src={cam.streamUrl || cam.url || `https://picsum.photos/seed/${cam.id}/300/200`}
                   className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"
                   alt=""
                   onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${cam.id}/300/200` }}
                 />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent" />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
                 <div className="absolute top-1 left-1 bg-red-600 px-1 rounded text-[7px] font-black text-white">LIVE</div>
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="bg-cyan-500 px-1.5 py-0.5 rounded text-[7px] font-black text-black">
+                    <i className="fa-solid fa-expand mr-1" />VIEW
+                  </span>
+                </div>
                 <div className="absolute bottom-1 left-1 right-1">
                   <p className="text-[8px] font-black text-white truncate uppercase">{cam.name}</p>
                   <p className="text-[7px] text-green-400">{cam.viewers} PERSPECTIVES</p>
@@ -119,6 +130,14 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedCity = 'chicago' }) => {
           </div>
         )}
       </div>
+
+      {/* CCTV Video Player Modal */}
+      <CCTVPlayer
+        camera={selectedCamera}
+        onClose={() => setSelectedCamera(null)}
+        allCameras={cameras}
+        onCameraChange={setSelectedCamera}
+      />
     </div>
   );
 };
