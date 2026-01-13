@@ -21,7 +21,7 @@ const FloatingPanels: React.FC<FloatingPanelsProps> = ({ onAlertClick, selectedC
       setIsLoading(true);
       try {
         const [newsData, cameraData, incidentData] = await Promise.all([
-          fetchNews(),
+          fetchNews(selectedCity),
           fetchCameras(selectedCity),
           fetchIncidents(selectedCity)
         ]);

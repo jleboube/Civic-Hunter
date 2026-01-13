@@ -202,13 +202,35 @@ app.get('/api/cameras', async (req, res) => {
 // NEWS FEED SOURCES
 // ============================================
 
-// GDELT Project - Real-time global news (with better error handling)
-async function fetchGDELTNews() {
+// City to GDELT location mapping
+const CITY_GDELT_QUERIES = {
+  chicago: 'Chicago OR Illinois',
+  nyc: 'New York OR Manhattan OR Brooklyn OR Queens OR Bronx',
+  la: 'Los Angeles OR California OR LA',
+  dc: 'Washington DC OR Capitol OR Congress',
+  evansville: 'Evansville OR Indiana'
+};
+
+// GDELT Project - Real-time news filtered by location
+async function fetchGDELTNews(city = null) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query=(breaking%20OR%20incident%20OR%20emergency)&mode=artlist&maxrecords=20&format=json', {
+    // Build location-aware query
+    let locationQuery = '';
+    if (city && CITY_GDELT_QUERIES[city]) {
+      locationQuery = `(${CITY_GDELT_QUERIES[city]})`;
+    } else {
+      // Default to major US cities
+      locationQuery = '(Chicago OR "New York" OR "Los Angeles" OR Washington OR Illinois OR California)';
+    }
+
+    // Combine location with incident-type keywords, filter to US sources
+    const query = encodeURIComponent(`${locationQuery} (incident OR emergency OR crime OR shooting OR fire OR accident OR breaking)`);
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=30&format=json&sourcelang=english&sourcecountry:US`;
+
+    const response = await fetch(url, {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' }
     });
@@ -224,14 +246,36 @@ async function fetchGDELTNews() {
 
     // Check if response looks like JSON
     if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-      console.log('GDELT API did not return JSON');
+      console.log('GDELT API did not return JSON:', text.slice(0, 100));
       return [];
     }
 
     const data = JSON.parse(text);
 
     if (data.articles && Array.isArray(data.articles)) {
-      return data.articles.slice(0, 15).map((article, index) => ({
+      // Filter to prioritize US sources
+      const usArticles = data.articles.filter(article => {
+        const domain = (article.domain || '').toLowerCase();
+        const country = (article.sourcecountry || '').toLowerCase();
+        // Prioritize US sources
+        return country.includes('united states') ||
+               domain.endsWith('.com') ||
+               domain.endsWith('.org') ||
+               domain.endsWith('.gov') ||
+               domain.includes('chicago') ||
+               domain.includes('nyc') ||
+               domain.includes('nytimes') ||
+               domain.includes('cnn') ||
+               domain.includes('abc') ||
+               domain.includes('nbc') ||
+               domain.includes('cbs') ||
+               domain.includes('fox');
+      });
+
+      // Use filtered US articles if available, otherwise use all
+      const articlesToUse = usArticles.length > 5 ? usArticles : data.articles;
+
+      return articlesToUse.slice(0, 20).map((article, index) => ({
         id: `gdelt-${index}`,
         title: article.title || 'Breaking News',
         source: article.domain || 'GDELT',
@@ -240,7 +284,8 @@ async function fetchGDELTNews() {
         imageUrl: article.socialimage || null,
         sentiment: analyzeSentimentBasic(article.title),
         location: extractLocation(article.title),
-        category: 'breaking'
+        category: 'breaking',
+        country: article.sourcecountry || 'Unknown'
       }));
     }
     return [];
@@ -292,15 +337,16 @@ function extractLocation(text) {
   return null;
 }
 
-// Aggregate all news sources
+// Aggregate all news sources with city filtering
 app.get('/api/news', async (req, res) => {
   try {
-    const gdeltNews = await fetchGDELTNews();
+    const city = req.query.city?.toLowerCase();
+    const gdeltNews = await fetchGDELTNews(city);
 
     // Sort by time (most recent first)
     gdeltNews.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-    console.log(`News API: Returning ${gdeltNews.length} articles from GDELT`);
+    console.log(`News API: Returning ${gdeltNews.length} articles for ${city || 'all US'}`);
     res.json(gdeltNews.slice(0, 20));
   } catch (error) {
     console.error('Error aggregating news:', error);

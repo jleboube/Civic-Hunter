@@ -137,10 +137,12 @@ export const fetchRadioStreams = async (city?: string): Promise<RadioStream[]> =
 /**
  * Fetch breaking news from multiple sources
  * Sources: GDELT Project
+ * @param city - Optional city filter (chicago, nyc, la, dc, evansville)
  */
-export const fetchNews = async (): Promise<NewsArticle[]> => {
+export const fetchNews = async (city?: string): Promise<NewsArticle[]> => {
   try {
-    const response = await fetch(`${API_BASE}/news`);
+    const url = city ? `${API_BASE}/news?city=${city}` : `${API_BASE}/news`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch news');
     const data = await response.json();
     return data.map((article: any) => ({
